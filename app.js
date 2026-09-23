@@ -34,8 +34,25 @@ let selectedProductForCustom = null;
    ========================================================================== */
 document.addEventListener('DOMContentLoaded', () => {
   cargarMenuSupabase();
+  escucharCambiosEnVivo();
   setupEventListeners();
 });
+
+/* ==========================================================================
+   ESCUCHAR CAMBIOS EN TIEMPO REAL (SUPABASE REALTIME)
+   ========================================================================== */
+function escucharCambiosEnVivo() {
+  if (!supabase) return;
+
+  supabase
+    .channel('public:menu')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'menu' }, payload => {
+      console.log('¡Cambio detectado en la base de datos!', payload);
+      // Recarga el menú automáticamente cuando hay inserciones, actualizaciones o borrados
+      cargarMenuSupabase();
+    })
+    .subscribe();
+}
 
 /* ==========================================================================
    CARGAR MENÚ DESDE SUPABASE
