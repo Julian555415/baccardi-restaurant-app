@@ -32,14 +32,22 @@ let selectedProductForCustom = null;
 /* ==========================================================================
    INICIALIZACIÓN
    ========================================================================== */
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   cargarMenuSupabase();
   escucharCambiosEnVivo();
   setupEventListeners();
+
+  await sincronizarHoraServidor();
   actualizarBannerEstado();
-  // Revisa el horario cada minuto por si alguien deja la página abierta
-  // justo cuando cruza la hora de apertura o cierre.
+
+  // Revisa el horario cada minuto (usando el offset ya sincronizado) por si
+  // alguien deja la página abierta justo cuando cruza la hora de apertura
+  // o cierre.
   setInterval(actualizarBannerEstado, 60 * 1000);
+
+  // Resincroniza con el servidor cada 15 minutos para evitar que el offset
+  // se desactualice en sesiones largas.
+  setInterval(sincronizarHoraServidor, 15 * 60 * 1000);
 });
 
 /* ==========================================================================
@@ -60,6 +68,40 @@ const HORARIOS = {
   6: { open: 17, close: 24 }, // Sábado
 };
 
+// Diferencia (en milisegundos) entre la hora real del servidor y el reloj
+// del dispositivo del cliente. No confiamos en new Date() a secas, porque
+// si el celular del cliente tiene la hora mal configurada, mostraría el
+// restaurante abierto/cerrado incorrectamente.
+let offsetServidorMs = 0;
+let horaSincronizada = false;
+
+async function sincronizarHoraServidor() {
+  try {
+    const antes = Date.now();
+    const resp = await fetch(`${SUPABASE_URL}/rest/v1/menu?select=id&limit=1`, {
+      headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }
+    });
+    const despues = Date.now();
+    const fechaServidor = resp.headers.get('date');
+
+    if (fechaServidor) {
+      // Corrige la latencia de ida y vuelta de la petición (estimada a la mitad)
+      const latenciaEstimadaMs = (despues - antes) / 2;
+      const horaServidorMs = new Date(fechaServidor).getTime() + latenciaEstimadaMs;
+      offsetServidorMs = horaServidorMs - despues;
+      horaSincronizada = true;
+    }
+  } catch (err) {
+    console.warn('No se pudo sincronizar la hora con el servidor; se usará el reloj del dispositivo como respaldo.', err);
+  }
+}
+
+function obtenerAhoraConfiable() {
+  // Si no logramos sincronizar (ej. sin internet), offsetServidorMs queda en 0
+  // y simplemente usamos el reloj del dispositivo como respaldo.
+  return new Date(Date.now() + offsetServidorMs);
+}
+
 function formatearHora(hora24) {
   const h = hora24 % 24;
   if (h === 0) return '12:00 AM';
@@ -68,7 +110,7 @@ function formatearHora(hora24) {
 }
 
 function obtenerEstadoRestaurante() {
-  const ahora = new Date();
+  const ahora = obtenerAhoraConfiable();
   const dia = ahora.getDay();
   const horaActual = ahora.getHours() + ahora.getMinutes() / 60;
   const horarioHoy = HORARIOS[dia];
@@ -97,10 +139,10 @@ function actualizarBannerEstado() {
 
   if (estado.abierto) {
     banner.classList.add('abierto');
-    banner.innerHTML = `Estamos Abiertos — ${estado.mensaje}`;
+    banner.innerHTML = `🟢 Estamos Abiertos — ${estado.mensaje}`;
   } else {
     banner.classList.add('cerrado');
-    banner.innerHTML = `Cerrados ahora — ${estado.mensaje}`;
+    banner.innerHTML = `🔴 Cerrados ahora — ${estado.mensaje}`;
   }
 }
 
