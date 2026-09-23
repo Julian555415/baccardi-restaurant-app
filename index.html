@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BACCARDI - Menú Digital</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<!-- ENCABEZADO -->
+  <header>
+    <div class="logo-container">
+      <i class="fas fa-hamburger" style="color: var(--accent-gold); font-size: 1.8rem;"></i>
+      <h1 class="logo-title">BACCARDI</h1>
+    </div>
+    <div class="header-actions">
+      <button class="btn-icon" id="btnAdminLogin" title="Modo Administrador">
+        <i class="fas fa-lock"></i>
+      </button>
+      <button class="btn-icon" id="btnOpenCart" title="Ver Carrito">
+        <i class="fas fa-shopping-cart"></i>
+        <span class="badge" id="cartCount">0</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- CONTENIDO PRINCIPAL -->
+  <main>
+    <!-- BARRA DE BÚSQUEDA -->
+    <div class="search-container">
+      <input type="text" id="searchInput" class="search-input" placeholder="Buscar hamburguesas, perros, bebidas...">
+    </div>
+
+    <!-- BOTONES DE CATEGORÍAS -->
+    <div class="categories-container">
+      <button class="cat-btn active" data-category="todos">Todos</button>
+      <button class="cat-btn" data-category="hamburguesas">Hamburguesas</button>
+      <button class="cat-btn" data-category="doggies">Doggies / Perros</button>
+      <button class="cat-btn" data-category="papas">Papas / Entradas</button>
+      <button class="cat-btn" data-category="bebidas">Bebidas</button>
+    </div>
+
+    <!-- CONTENEDOR DEL MENÚ -->
+    <div class="menu-grid" id="menuContainer">
+      <!-- Los productos se cargan dinámicamente desde app.js -->
+    </div>
+  </main>
+
+  <!-- SECCIÓN DE INFORMACIÓN, DIRECCIÓN Y MAPA INTERACTIVO -->
+  <footer class="info-footer">
+    <div class="info-container">
+      <div class="info-details">
+        <div class="info-block">
+          <h3 class="info-title"><i class="fas fa-map-marker-alt"></i> Dirección</h3>
+          <p class="info-text">Cra. 18 #7-116, Aguachica, Cesar</p>
+        </div>
+
+        <div class="info-block">
+          <h3 class="info-title"><i class="fas fa-clock"></i> Horarios</h3>
+          <div class="schedule-row">
+            <span>Lunes a jueves</span>
+            <span>5:00 pm a 11:00 pm</span>
+          </div>
+          <div class="schedule-row">
+            <span>Viernes a domingo</span>
+            <span>5:00 pm a 12:00 am</span>
+          </div>
+        </div>
+
+        <div class="info-block">
+          <h3 class="info-title"><i class="fas fa-motorcycle"></i> Domicilios</h3>
+          <p class="info-text">Cobertura en Aguachica. El costo del envío se confirma por WhatsApp.</p>
+        </div>
+
+        <div class="footer-buttons">
+          <a href="https://maps.google.com/?q=Cra.+18+%237-116,+Aguachica,+Cesar" target="_blank" class="btn-footer btn-maps">
+            <i class="fas fa-directions"></i> Abrir en Google Maps
+          </a>
+          <a href="https://wa.me/573118243908" target="_blank" class="btn-footer btn-whatsapp-footer">
+            <i class="fab fa-whatsapp"></i> Escribirnos por WhatsApp
+          </a>
+        </div>
+      </div>
+
+      <div class="info-map">
+        <iframe 
+          src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3947.525678912!2d-73.618!3d8.307!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x8e5d033999999999%3A0x0!2sCra.+18+%237-116%2C+Aguachica%2C+Cesar!5e0!3m2!1ses!2sco!4v1700000000000!5m2!1ses!2sco" 
+          width="100%" 
+          height="100%" 
+          style="border:0;" 
+          allowfullscreen="" 
+          loading="lazy" 
+          referrerpolicy="no-referrer-when-downgrade">
+        </iframe>
+      </div>
+    </div>
+  </footer>
+
+  <!-- MODAL DE PERSONALIZACIÓN DE PRODUCTO (PAPAS Y ADICIONALES) -->
+  <div class="modal" id="customizeModal">
+    <div class="modal-content">
+      <button class="close-modal" id="closeCustomizeModal">&times;</button>
+      <h2 id="customProdTitle">Personalizar Producto</h2>
+      <p id="customProdDesc" style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 15px;"></p>
+      <hr style="border-color: #333; margin-bottom: 15px;">
+
+      <!-- Opción Obligatoria de Papas (Para Hamburguesas y Doggies) -->
+      <div id="friesSection" class="custom-section">
+        <label class="custom-label">Selecciona tu acompañamiento (Obligatorio):</label>
+        <div class="radio-group">
+          <label class="option-card">
+            <input type="radio" name="friesOption" value="Papas Francesas" checked>
+            <span>Papas Francesas</span>
+          </label>
+          <label class="option-card">
+            <input type="radio" name="friesOption" value="Papas Casco">
+            <span>Papas Casco</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Sección de Adicionales Opciónales -->
+      <div class="custom-section">
+        <label class="custom-label">Adicionales (Opcional):</label>
+        <div class="checkbox-group">
+          <label class="option-card">
+            <input type="checkbox" class="extra-item" data-name="Mermelada de Tocineta" data-price="4000">
+            <span>Mermelada de Tocineta (+$4.000)</span>
+          </label>
+          <label class="option-card">
+            <input type="checkbox" class="extra-item" data-name="Aros de Cebolla" data-price="3500">
+            <span>Aros de Cebolla (+$3.500)</span>
+          </label>
+          <label class="option-card">
+            <input type="checkbox" class="extra-item" data-name="Extra Queso Cheddar" data-price="3000">
+            <span>Extra Queso Cheddar (+$3.000)</span>
+          </label>
+          <label class="option-card">
+            <input type="checkbox" class="extra-item" data-name="Extra Tocineta Crocante" data-price="4000">
+            <span>Extra Tocineta Crocante (+$4.000)</span>
+          </label>
+        </div>
+      </div>
+
+      <button class="btn-submit" id="btnConfirmAddToCart" style="margin-top: 15px;">Agregar al Pedido</button>
+    </div>
+  </div>
+
+  <!-- MODAL DEL CARRITO DE COMPRAS -->
+  <div class="modal" id="cartModal">
+    <div class="modal-content">
+      <button class="close-modal" id="closeCartModal">&times;</button>
+      <h2>Tu Pedido</h2>
+      <hr style="border-color: #333; margin: 15px 0;">
+      
+      <div id="cartItemsContainer">
+        <!-- Ítems del carrito -->
+      </div>
+
+      <!-- Selección de Tipo de Servicio -->
+      <div class="service-type-container">
+        <label class="custom-label">Tipo de Servicio:</label>
+        <div class="radio-group">
+          <label class="option-card">
+            <input type="radio" name="serviceType" value="Domicilio" checked id="radioDomicilio">
+            <span>Domicilio</span>
+          </label>
+          <label class="option-card">
+            <input type="radio" name="serviceType" value="Mesa" id="radioMesa">
+            <span>Comer en Restaurante</span>
+          </label>
+        </div>
+
+        <!-- Campo Dinámico según Selección -->
+        <div class="form-group" id="groupDomicilio" style="margin-top: 12px;">
+          <label for="deliveryAddress">Dirección de entrega:</label>
+          <input type="text" id="deliveryAddress" class="form-control" placeholder="Ej: Calle 10 # 15-20, Barrio Centro">
+        </div>
+
+        <div class="form-group" id="groupMesa" style="margin-top: 12px; display: none;">
+          <label for="tableNumber">Número de Mesa:</label>
+          <input type="number" id="tableNumber" class="form-control" placeholder="Ej: 4">
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px; font-weight: bold; font-size: 1.2rem;">
+        <span>Total:</span>
+        <span id="cartTotal" style="color: var(--accent-gold);">$0</span>
+      </div>
+
+      <button class="btn-whatsapp" id="btnSendWhatsApp">
+        <i class="fab fa-whatsapp"></i> Enviar Pedido a WhatsApp
+      </button>
+    </div>
+  </div>
+
+  <!-- MODAL DE ADMINISTRADOR (AGREGAR PRODUCTOS) -->
+  <div class="modal" id="adminModal">
+    <div class="modal-content">
+      <button class="close-modal" id="closeAdminModal">&times;</button>
+      <h2>Agregar Nuevo Producto</h2>
+      <hr style="border-color: #333; margin: 15px 0;">
+      
+      <form id="addProductForm">
+        <div class="form-group">
+          <label for="prodName">Nombre del plato:</label>
+          <input type="text" id="prodName" class="form-control" placeholder="Ej: Hamburguesa Baccardi" required>
+        </div>
+
+        <div class="form-group">
+          <label for="prodCategory">Categoría:</label>
+          <select id="prodCategory" class="form-control" required>
+            <option value="hamburguesas">Hamburguesas</option>
+            <option value="doggies">Doggies / Perros</option>
+            <option value="papas">Papas / Entradas</option>
+            <option value="bebidas">Bebidas</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="prodPrice">Precio ($):</label>
+          <input type="number" id="prodPrice" class="form-control" placeholder="Ej: 25000" required>
+        </div>
+
+        <div class="form-group">
+          <label for="prodDesc">Descripción / Ingredientes:</label>
+          <textarea id="prodDesc" class="form-control" rows="3" placeholder="Ej: Doble carne, queso cheddar, tocineta..." required></textarea>
+        </div>
+
+        <div class="form-group">
+          <label>Imagen del producto:</label>
+          <div style="display: flex; gap: 15px; margin-bottom: 10px;">
+            <label><input type="radio" name="imgSource" value="url" checked> URL de Internet</label>
+            <label><input type="radio" name="imgSource" value="file"> Archivo Local</label>
+          </div>
+          <input type="url" id="prodImgUrl" class="form-control" placeholder="https://ejemplo.com/imagen.jpg">
+          <input type="file" id="prodImgFile" class="form-control" accept="image/*" style="display: none;">
+        </div>
+
+        <button type="submit" class="btn-submit">Guardar Producto</button>
+      </form>
+    </div>
+  </div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="app.js"></script>
+</body>
+</html>
