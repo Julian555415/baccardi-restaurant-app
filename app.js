@@ -36,7 +36,73 @@ document.addEventListener('DOMContentLoaded', () => {
   cargarMenuSupabase();
   escucharCambiosEnVivo();
   setupEventListeners();
+  actualizarBannerEstado();
+  // Revisa el horario cada minuto por si alguien deja la página abierta
+  // justo cuando cruza la hora de apertura o cierre.
+  setInterval(actualizarBannerEstado, 60 * 1000);
 });
+
+/* ==========================================================================
+   HORARIO Y ESTADO DEL RESTAURANTE (ABIERTO / CERRADO)
+   ========================================================================== */
+// IMPORTANTE: estos horarios deben coincidir siempre con los que aparecen
+// en el footer de index.html ("Horarios"). Si cambia el horario del
+// restaurante, actualícelo aquí Y en el footer.
+// open/close en formato 24h (17 = 5:00 pm, 24 = medianoche).
+// 0 = domingo, 1 = lunes, ..., 6 = sábado
+const HORARIOS = {
+  0: { open: 17, close: 24 }, // Domingo
+  1: { open: 17, close: 23 }, // Lunes
+  2: { open: 17, close: 23 }, // Martes
+  3: { open: 17, close: 23 }, // Miércoles
+  4: { open: 17, close: 23 }, // Jueves
+  5: { open: 17, close: 24 }, // Viernes
+  6: { open: 17, close: 24 }, // Sábado
+};
+
+function formatearHora(hora24) {
+  const h = hora24 % 24;
+  if (h === 0) return '12:00 AM';
+  if (h === 12) return '12:00 PM';
+  return h > 12 ? `${h - 12}:00 PM` : `${h}:00 AM`;
+}
+
+function obtenerEstadoRestaurante() {
+  const ahora = new Date();
+  const dia = ahora.getDay();
+  const horaActual = ahora.getHours() + ahora.getMinutes() / 60;
+  const horarioHoy = HORARIOS[dia];
+
+  const abierto = horaActual >= horarioHoy.open && horaActual < horarioHoy.close;
+
+  let mensaje;
+  if (abierto) {
+    mensaje = `Abierto hasta las ${formatearHora(horarioHoy.close)}`;
+  } else if (horaActual < horarioHoy.open) {
+    mensaje = `Abrimos hoy a las ${formatearHora(horarioHoy.open)}`;
+  } else {
+    const diaSiguiente = (dia + 1) % 7;
+    mensaje = `Abrimos mañana a las ${formatearHora(HORARIOS[diaSiguiente].open)}`;
+  }
+
+  return { abierto, mensaje };
+}
+
+function actualizarBannerEstado() {
+  const banner = document.getElementById('estadoRestaurante');
+  if (!banner) return;
+
+  const estado = obtenerEstadoRestaurante();
+  banner.classList.remove('abierto', 'cerrado');
+
+  if (estado.abierto) {
+    banner.classList.add('abierto');
+    banner.innerHTML = `Estamos Abiertos — ${estado.mensaje}`;
+  } else {
+    banner.classList.add('cerrado');
+    banner.innerHTML = `Cerrados ahora — ${estado.mensaje}`;
+  }
+}
 
 /* ==========================================================================
    ESCUCHAR CAMBIOS EN TIEMPO REAL (SUPABASE REALTIME)
@@ -311,6 +377,12 @@ document.getElementById('btnSendWhatsApp')?.addEventListener('click', () => {
     return;
   }
 
+  const estado = obtenerEstadoRestaurante();
+  if (!estado.abierto) {
+    alert(`🔴 En este momento estamos cerrados.\n${estado.mensaje}\n\nPor favor intenta enviarnos tu pedido cuando estemos abiertos.`);
+    return;
+  }
+
   const serviceType = document.querySelector('input[name="serviceType"]:checked').value;
   let serviceDetail = "";
 
@@ -354,14 +426,14 @@ document.getElementById('btnSendWhatsApp')?.addEventListener('click', () => {
 /* ==========================================================================
    MODO ADMINISTRADOR (AGREGAR NUEVOS PRODUCTOS - SUPABASE)
    ========================================================================== */
-document.getElementById('addProductForm')?.addEventListener('submit', (e) => {
+document.getElementById('addProductForm')?.addEventListener('submit', async (e) => {
   e.preventDefault();
 
   const nombre = document.getElementById('prodName').value;
   const categoria = document.getElementById('prodCategory').value;
   const descripcion = document.getElementById('prodDesc').value;
   const precio = parseFloat(document.getElementById('prodPrice').value);
-  
+
   const imgSource = document.querySelector('input[name="imgSource"]:checked').value;
 
   if (imgSource === 'url') {
@@ -370,16 +442,70 @@ document.getElementById('addProductForm')?.addEventListener('submit', (e) => {
   } else {
     const fileInput = document.getElementById('prodImgFile');
     if (fileInput.files && fileInput.files[0]) {
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        guardarProductoSupabase(nombre, categoria, descripcion, precio, e.target.result);
-      };
-      reader.readAsDataURL(fileInput.files[0]);
+      const submitBtn = document.querySelector('#addProductForm .btn-submit');
+      const textoOriginal = submitBtn ? submitBtn.textContent : null;
+      try {
+        if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Optimizando imagen...'; }
+        const imagenComprimida = await comprimirImagen(fileInput.files[0]);
+        guardarProductoSupabase(nombre, categoria, descripcion, precio, imagenComprimida);
+      } catch (err) {
+        console.error('Error al comprimir la imagen:', err);
+        alert('No se pudo procesar la imagen. Intenta con otra foto.');
+      } finally {
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = textoOriginal; }
+      }
     } else {
       guardarProductoSupabase(nombre, categoria, descripcion, precio, 'https://via.placeholder.com/300x200?text=Baccardi');
     }
   }
 });
+
+/**
+ * Redimensiona y comprime una imagen en el navegador antes de guardarla,
+ * para que una foto de celular (5-15MB) quede en un archivo liviano
+ * (normalmente menos de 200-300KB) sin que el admin tenga que hacer nada.
+ * Devuelve un string base64 en formato WebP.
+ */
+function comprimirImagen(file, maxAncho = 800, calidad = 0.72) {
+  return new Promise((resolve, reject) => {
+    if (!file.type.startsWith('image/')) {
+      reject(new Error('El archivo seleccionado no es una imagen.'));
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('No se pudo leer el archivo.'));
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('No se pudo procesar la imagen.'));
+      img.onload = () => {
+        let ancho = img.width;
+        let alto = img.height;
+
+        // Si la imagen es más ancha que maxAncho, la reducimos manteniendo proporción
+        if (ancho > maxAncho) {
+          alto = Math.round((alto * maxAncho) / ancho);
+          ancho = maxAncho;
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = ancho;
+        canvas.height = alto;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, ancho, alto);
+
+        // Intentamos WebP primero (mucho más liviano); si el navegador no lo soporta, cae a JPEG
+        let dataUrl = canvas.toDataURL('image/webp', calidad);
+        if (!dataUrl || dataUrl.indexOf('data:image/webp') !== 0) {
+          dataUrl = canvas.toDataURL('image/jpeg', calidad);
+        }
+        resolve(dataUrl);
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
 
 async function guardarProductoSupabase(nombre, categoria, descripcion, precio, imagen) {
   if (!supabase) {

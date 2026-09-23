@@ -88,6 +88,29 @@ header {
 }
 
 /* ==========================================================================
+   BANNER DE ESTADO (ABIERTO / CERRADO)
+   ========================================================================== */
+.estado-banner {
+  text-align: center;
+  padding: 10px 15px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  letter-spacing: 0.3px;
+}
+
+.estado-banner.abierto {
+  background-color: rgba(37, 211, 102, 0.15);
+  color: #25d366;
+  border-bottom: 1px solid rgba(37, 211, 102, 0.3);
+}
+
+.estado-banner.cerrado {
+  background-color: rgba(220, 53, 69, 0.15);
+  color: #ff6b78;
+  border-bottom: 1px solid rgba(220, 53, 69, 0.3);
+}
+
+/* ==========================================================================
    SECCIÓN PRINCIPAL Y BÚSQUEDA
    ========================================================================== */
 main {
@@ -355,6 +378,17 @@ main {
   background-color: var(--bg-primary);
   color: var(--text-main);
   outline: none;
+}
+
+.delivery-note {
+  margin-top: 8px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.delivery-note i {
+  color: var(--accent-gold);
 }
 
 .btn-submit {
