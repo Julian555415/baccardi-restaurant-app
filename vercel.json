@@ -1,0 +1,7 @@
+{
+  "rewrites": [
+    { "source": "/", "has": [{ "type": "host", "value": "admin-baccardi.vercel.app" }], "destination": "/admin.html" },
+    { "source": "/admin", "destination": "/admin.html" },
+    { "source": "/menu", "destination": "/index.html" }
+  ]
+}
