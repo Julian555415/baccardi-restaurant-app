@@ -139,10 +139,10 @@ function actualizarBannerEstado() {
 
   if (estado.abierto) {
     banner.classList.add('abierto');
-    banner.innerHTML = `🟢 Estamos Abiertos — ${estado.mensaje}`;
+    banner.innerHTML = `Estamos Abiertos — ${estado.mensaje}`;
   } else {
     banner.classList.add('cerrado');
-    banner.innerHTML = `🔴 Cerrados ahora — ${estado.mensaje}`;
+    banner.innerHTML = `Cerrados ahora — ${estado.mensaje}`;
   }
 }
 
