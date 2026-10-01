@@ -139,10 +139,10 @@ function actualizarBannerEstado() {
 
   if (estado.abierto) {
     banner.classList.add('abierto');
-    banner.innerHTML = `Estamos Abiertos — ${estado.mensaje}`;
+    banner.innerHTML = `🟢 Estamos Abiertos — ${estado.mensaje}`;
   } else {
     banner.classList.add('cerrado');
-    banner.innerHTML = `Cerrados ahora — ${estado.mensaje}`;
+    banner.innerHTML = `🔴 Cerrados ahora — ${estado.mensaje}`;
   }
 }
 
@@ -190,7 +190,8 @@ async function cargarMenuSupabase() {
       category: item.categoria,
       price: Number(item.precio),
       desc: item.descripcion || '',
-      image: item.imagen || 'https://via.placeholder.com/300x200?text=Baccardi'
+      image: item.imagen || 'https://via.placeholder.com/300x200?text=Baccardi',
+      agotado: !!item.agotado
     }));
 
     const activeCat = document.querySelector('.cat-btn.active')?.dataset.category || 'todos';
@@ -224,15 +225,18 @@ function renderMenu(filterCategory = 'todos', searchTerm = '') {
 
   filtered.forEach(prod => {
     const card = document.createElement('div');
-    card.className = 'product-card';
+    card.className = 'product-card' + (prod.agotado ? ' product-agotado' : '');
     card.innerHTML = `
+      ${prod.agotado ? '<span class="badge-agotado">AGOTADO</span>' : ''}
       <img src="${prod.image}" alt="${prod.name}" class="product-img" onerror="this.src='https://via.placeholder.com/300x200?text=Baccardi'">
       <div class="product-info">
         <h3 class="product-title">${prod.name}</h3>
         <p class="product-desc">${prod.desc}</p>
         <div class="product-bottom">
           <span class="product-price">$${prod.price.toLocaleString('es-CO')}</span>
-          <button class="btn-add-cart" onclick="handleAddToCartClick(${prod.id})">Agregar</button>
+          ${prod.agotado
+            ? `<button class="btn-add-cart" disabled style="opacity: 0.5; cursor: not-allowed;">Agotado</button>`
+            : `<button class="btn-add-cart" onclick="handleAddToCartClick(${prod.id})">Agregar</button>`}
         </div>
       </div>
     `;
@@ -281,6 +285,10 @@ function renderExtrasCheckboxes() {
 function handleAddToCartClick(id) {
   const prod = products.find(p => p.id === id);
   if (!prod) return;
+  if (prod.agotado) {
+    alert('Lo sentimos, este producto está agotado en este momento.');
+    return;
+  }
 
   selectedProductForCustom = prod;
 
@@ -467,6 +475,13 @@ document.getElementById('btnSendWhatsApp')?.addEventListener('click', () => {
 
   const url = `https://wa.me/${WHATSAPP_PHONE}?text=${encodeURIComponent(msg)}`;
   window.open(url, '_blank');
+
+  // Vaciamos el carrito y avisamos claramente que ya se envió, para que el
+  // cliente no se confunda si vuelve a esta pestaña y crea que falta enviarlo.
+  cart = [];
+  updateCartUI();
+  document.getElementById('cartModal').style.display = 'none';
+  alert('✅ ¡Pedido enviado! Se abrió WhatsApp con tu pedido listo — solo confirma el envío allá para que el restaurante lo reciba.');
 });
 
 /* ==========================================================================
