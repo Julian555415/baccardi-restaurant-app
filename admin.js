@@ -5,7 +5,6 @@
    ========================================================================== */
 const SUPABASE_URL = 'https://todcmniumymwnloujcgb.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_q2mRmPcKxNj0ZKxGp15jYg_8NOcWvSo'; // Su Publishable key de Supabase
-const MASTER_PASSWORD = "baccardi2026";
 
 let supabase = null;
 try {
@@ -19,49 +18,67 @@ try {
 }
 
 /* ==========================================================================
-   CANDADO DE ACCESO (CONTRASEÑA OBLIGATORIA)
+   INICIO DE SESIÓN REAL (SUPABASE AUTH)
    ========================================================================== */
-// IMPORTANTE: esto es un candado a nivel de interfaz (evita que un curioso
-// que abra el link del panel vea el formulario). NO es seguridad real de
-// backend: cualquiera que sepa programar podría ver el código de esta
-// página o llamar directo a la API de Supabase con la misma llave pública
-// que usa la web. Para bloquear el borrado/inserción de verdad a nivel de
-// base de datos, lo correcto a futuro es usar autenticación real de
-// Supabase (Supabase Auth) + políticas de RLS que exijan un usuario
-// autenticado para insertar/borrar en la tabla "menu". Por ahora, esto
-// cumple con mantener alejados a los clientes curiosos del panel.
-function verificarAcceso() {
-  const respuesta = prompt('Panel de administrador de BACCARDI\nIngrese la clave de acceso:');
-  const clave = (respuesta || '').trim();
+// IMPORTANTE: ya no usamos una clave escrita en el código (MASTER_PASSWORD).
+// Ahora se valida contra un usuario real creado en Supabase Auth, así que
+// aunque alguien vea todo el código de esta página, no encuentra ninguna
+// contraseña ahí escrita. Además, la base de datos (tabla "menu") ahora
+// exige estar autenticado para insertar/editar/borrar (ver
+// seguridad_y_stock.sql) — ya no basta con tener la llave pública.
+document.addEventListener('DOMContentLoaded', async () => {
+  if (!supabase) return;
 
-  console.log('Clave ingresada:', JSON.stringify(clave));
-
-  if (clave === MASTER_PASSWORD) {
-    console.log('Clave correcta, mostrando el panel.');
-    document.getElementById('adminApp').style.display = 'block';
-    document.getElementById('adminBloqueado').style.display = 'none';
-    iniciarPanelAdmin();
-  } else {
-    console.log('Clave incorrecta o cancelada.');
-    mostrarPantallaBloqueada();
+  // Si ya había una sesión iniciada (el navegador la recuerda), entra directo.
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session) {
+    mostrarPanelAdmin();
   }
-}
 
-function mostrarPantallaBloqueada() {
-  document.getElementById('adminApp').style.display = 'none';
-  const bloqueo = document.getElementById('adminBloqueado');
-  if (bloqueo) bloqueo.style.display = 'flex';
+  document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('loginEmail').value.trim();
+    const password = document.getElementById('loginPassword').value;
+    const errorMsg = document.getElementById('loginError');
+    const btn = document.getElementById('btnLoginSubmit');
+
+    errorMsg.style.display = 'none';
+    btn.disabled = true;
+    btn.textContent = 'Ingresando...';
+
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+
+    btn.disabled = false;
+    btn.textContent = 'Ingresar';
+
+    if (error) {
+      errorMsg.textContent = 'Correo o contraseña incorrectos.';
+      errorMsg.style.display = 'block';
+      return;
+    }
+
+    mostrarPanelAdmin();
+  });
+
+  document.getElementById('btnLogout')?.addEventListener('click', async () => {
+    await supabase.auth.signOut();
+    location.reload();
+  });
+});
+
+function mostrarPanelAdmin() {
+  document.getElementById('adminLogin').style.display = 'none';
+  document.getElementById('adminApp').style.display = 'block';
+  iniciarPanelAdmin();
 }
 
 /* ==========================================================================
-   INICIALIZACIÓN DEL PANEL (solo corre si la clave fue correcta)
+   INICIALIZACIÓN DEL PANEL (solo corre si el login fue correcto)
    ========================================================================== */
 function iniciarPanelAdmin() {
   cargarListaProductos();
   setupEventListenersAdmin();
 }
-
-document.addEventListener('DOMContentLoaded', verificarAcceso);
 
 /* ==========================================================================
    CARGAR Y MOSTRAR LA LISTA DE PRODUCTOS ACTUALES (CON BOTÓN ELIMINAR)
@@ -97,9 +114,12 @@ async function cargarListaProductos() {
       <img src="${prod.imagen}" alt="${prod.nombre}" class="admin-product-thumb" onerror="this.src='https://via.placeholder.com/60?text=%20'">
       <div class="admin-product-info">
         <strong>${prod.nombre}</strong>
-        <span class="admin-product-cat">${prod.categoria}</span>
+        <span class="admin-product-cat">${prod.categoria}${prod.agotado ? ' · <span style="color: var(--accent-red);">AGOTADO</span>' : ''}</span>
       </div>
       <span class="admin-product-price">$${Number(prod.precio).toLocaleString('es-CO')}</span>
+      <button class="btn-toggle-agotado" data-id="${prod.id}" data-agotado="${prod.agotado}" title="${prod.agotado ? 'Marcar como disponible' : 'Marcar como agotado'}">
+        ${prod.agotado ? '<i class="fas fa-undo"></i> Disponible' : '<i class="fas fa-ban"></i> Agotado'}
+      </button>
       <button class="btn-delete-prod-admin" data-id="${prod.id}" title="Eliminar producto">
         <i class="fas fa-trash"></i>
       </button>
@@ -109,6 +129,24 @@ async function cargarListaProductos() {
   container.querySelectorAll('.btn-delete-prod-admin').forEach(btn => {
     btn.addEventListener('click', () => eliminarProducto(Number(btn.dataset.id)));
   });
+
+  container.querySelectorAll('.btn-toggle-agotado').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const nuevoEstado = btn.dataset.agotado !== 'true';
+      toggleAgotado(Number(btn.dataset.id), nuevoEstado);
+    });
+  });
+}
+
+async function toggleAgotado(id, nuevoEstado) {
+  if (!supabase) return;
+  const { error } = await supabase.from('menu').update({ agotado: nuevoEstado }).eq('id', id);
+  if (error) {
+    console.error('Error al actualizar disponibilidad:', error);
+    alert('No se pudo actualizar. Verifica que hayas iniciado sesión correctamente.');
+    return;
+  }
+  await cargarListaProductos();
 }
 
 async function eliminarProducto(id) {
